@@ -16,6 +16,10 @@
 모든 스케치 중 라인트레이서 기능을 포함하는 주요 버전에서 확인되는 공통 핀:
 `LmotorCW=5, LmotorCCW=6, RmotorCW=9, RmotorCCW=10, IRL=7, IRR=8, BUTTON_PIN=3`. 보드레이트 `9600`, 모터 `speed=255`도 여러 버전에서 확인됩니다. **이 수치가 전체 과제의 최종 확정 배선 및 성능 설정이라는 별도 검증은 아닙니다.**
 
+## Python 시리얼 테스트 코드도 별도 보존
+
+제출된 `historical_snippets/02_serial_echo_test.py`는 Python `pyserial`로 `/dev/ttyACM0` 포트에 `9600bps`로 접속하고 Arduino로부터 한 줄을 읽은 뒤, `Hello from Raspberry Pi!`를 쓰는 **기초 송수신 시험 코드**입니다. 같은 폴더의 `02_serial_echo_test.ino`와 개발 의도가 대응하지만, 정확히 같은 시점·장치에서 동시에 시험됐는지는 사진만으로 확정되지 않습니다. 이 코드는 **최종 라인트레이서 사람 감지 제어 코드가 아닙니다.**
+
 ## 직렬 제어 프로토콜은 단일 버전으로 확정되지 않음
 
 - 01·04~06은 Arduino 측이 **숫자를 받는 형태**이며, `receivedNumber != 0`이면 정지하는 버전도 있습니다.
