@@ -26,6 +26,19 @@
 - **재출발**: 버튼 입력 시 1을 회신, 이후 1~3초의 감지 무시 구간을 두도록 실험
 - **사람 인식**: 별도 모델을 학습한 것이 아니라 Safe Watch의 TensorFlow Lite 사람 검출 기능을 필요한 부분만 추려서 재사용
 
+
+## 2023년 코드 재사용·통신 개발 화면
+
+**Safe Watch의 객체 검출 코드를 추출해 라인트레이서에 사람 인식 기능을 적용하는 과정**의 화면들입니다. 당시 개발 흐름을 보여주는 자료이며, 최종 라인트레이서의 자동 정지 성공률이나 시연 결과는 아닙니다.
+
+![기존 검출 코드 재사용 테스트 1 — 인물 영역 익명화](assets/2023_detector_reuse_test_redacted_1.jpg)
+
+![기존 검출 코드 재사용 테스트 2 — 인물 영역 익명화](assets/2023_detector_reuse_test_redacted_2.jpg)
+
+![Arduino–Raspberry Pi 시리얼 통신 시험 — 접속정보와 대화내용 가림](assets/2023_serial_test_redacted.jpg)
+
+[화면별 근거와 해석 범위](docs/DETECTOR_REUSE_EVIDENCE.md)
+
 ## 확인된 핵심 판단식
 
 ```python
