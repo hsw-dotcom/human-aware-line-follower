@@ -1,147 +1,81 @@
 /*
-  2023-12 Arduino + Raspberry Pi line tracer, dialogue-based RECONSTRUCTION.
-  NOT a recovered historical Arduino sketch. Use only after real hardware checks.
-
-  CONFIRMED from conversation:
-    button pin 3 INPUT_PULLUP (pressed means message field 1)
-    left motors CW=5 CCW=6; right motors CW=9 CCW=10
-    IRL/IRR: HH forward, LH left, HL right, LL stop
-    Arduino -> Pi: r:g:b:button followed by LF
-    Pi -> Arduino: result 0/1 (0=stop, 1=line-follow)
-  ASSUMED: IRL pin2, IRR pin4, baud 9600, motor speeds, RGB conversion,
-           timeout durations, button hardware debounce, TCS34725 gain.
-*/
-#include <Arduino.h>
+ * 2023.12 라인트레이서 — 대화 충실 복원 (실제 .ino 원문은 미확보)
+ *
+ * 확인된 숫자/규칙:
+ *   LmotorCW=5, LmotorCCW=6, RmotorCW=9, RmotorCCW=10
+ *   BUTTON_PIN=3, INPUT_PULLUP, 눌리면 button=1
+ *   IRL/IRR: HH 전진, LH 좌회전, HL 우회전, LL 정지
+ *   Arduino -> Pi: r:g:b:button / Pi -> Arduino: 0 또는 1
+ * 미확인: IR 핀, 모터 속도, RGB의 축척, Serial 속도·종결자
+ * 따라서 이런 값은 별도의 '가정'으로 표시하며 역사적 사실로 쓰지 않음.
+ */
 #include <Wire.h>
 #include <Adafruit_TCS34725.h>
 
-const uint8_t BUTTON_PIN = 3;
-const uint8_t LmotorCW = 5;
-const uint8_t LmotorCCW = 6;
-const uint8_t RmotorCW = 9;
-const uint8_t RmotorCCW = 10;
+const int LmotorCW = 5;
+const int LmotorCCW = 6;
+const int RmotorCW = 9;
+const int RmotorCCW = 10;
+const int BUTTON_PIN = 3;
 
-// Unverified wiring. Confirm pin assignments against original device.
-const uint8_t IRL_PIN = 2;
-const uint8_t IRR_PIN = 4;
-const unsigned long SERIAL_BAUD = 9600;
-const unsigned long RESPONSE_TIMEOUT_MS = 800; // reconstruction: async Pi normally replies quickly
-const uint8_t FORWARD_PWM = 150;
-const uint8_t TURN_PWM = 135;
-const uint8_t IDLE_DELAY_MS = 30;
+const int IRL_PIN = 2;         // 미확인, 동작을 설명하기 위한 임시 배선
+const int IRR_PIN = 4;         // 미확인
+const int DRIVE_SPEED = 150;  // 미확인
+const long BAUD_RATE = 9600;  // 미확인
 
-Adafruit_TCS34725 tcs(TCS34725_INTEGRATIONTIME_50MS, TCS34725_GAIN_4X);
+Adafruit_TCS34725 tcs = Adafruit_TCS34725();
 
-void setLeft(int speed) {
-  speed = constrain(speed, -255, 255);
-  if (speed >= 0) {
-    analogWrite(LmotorCCW, 0);
-    analogWrite(LmotorCW, speed);
-  } else {
-    analogWrite(LmotorCW, 0);
-    analogWrite(LmotorCCW, -speed);
+void stopMotor() {
+  analogWrite(LmotorCW, 0); analogWrite(LmotorCCW, 0);
+  analogWrite(RmotorCW, 0); analogWrite(RmotorCCW, 0);
+}
+
+void lineTrace() {
+  int IRL = digitalRead(IRL_PIN);
+  int IRR = digitalRead(IRR_PIN);
+
+  if (IRL == HIGH && IRR == HIGH) {        // 직진
+    analogWrite(LmotorCW, DRIVE_SPEED); analogWrite(LmotorCCW, 0);
+    analogWrite(RmotorCW, DRIVE_SPEED); analogWrite(RmotorCCW, 0);
+  } else if (IRL == LOW && IRR == HIGH) {  // 좌회전
+    analogWrite(LmotorCW, 0); analogWrite(LmotorCCW, 0);
+    analogWrite(RmotorCW, DRIVE_SPEED); analogWrite(RmotorCCW, 0);
+  } else if (IRL == HIGH && IRR == LOW) {  // 우회전
+    analogWrite(LmotorCW, DRIVE_SPEED); analogWrite(LmotorCCW, 0);
+    analogWrite(RmotorCW, 0); analogWrite(RmotorCCW, 0);
+  } else {                                 // 정지
+    stopMotor();
   }
-}
-
-void setRight(int speed) {
-  speed = constrain(speed, -255, 255);
-  if (speed >= 0) {
-    analogWrite(RmotorCCW, 0);
-    analogWrite(RmotorCW, speed);
-  } else {
-    analogWrite(RmotorCW, 0);
-    analogWrite(RmotorCCW, -speed);
-  }
-}
-
-void stopMotors() {
-  setLeft(0);
-  setRight(0);
-}
-
-void followLine() {
-  const int IRL = digitalRead(IRL_PIN);
-  const int IRR = digitalRead(IRR_PIN);
-  if (IRL == HIGH && IRR == HIGH) {
-    setLeft(FORWARD_PWM); setRight(FORWARD_PWM);
-  } else if (IRL == LOW && IRR == HIGH) {
-    setLeft(0); setRight(TURN_PWM);
-  } else if (IRL == HIGH && IRR == LOW) {
-    setLeft(TURN_PWM); setRight(0);
-  } else {
-    stopMotors();
-  }
-}
-
-/*
-  No historical conversion/scale was preserved. This implementation maps
-  each raw RGB channel into a proportion of a total of 10. The Pi uses the
-  exact documented rule: r>=4 || r>=2*g || r>=2*b. The latter is also true
-  for 0:0:0; this is a documented property of the original expression.
-*/
-void readColorScores(uint8_t &r, uint8_t &g, uint8_t &b) {
-  uint16_t rawR = 0, rawG = 0, rawB = 0, rawClear = 0;
-  tcs.getRawData(&rawR, &rawG, &rawB, &rawClear);
-  const uint32_t sum = (uint32_t)rawR + rawG + rawB;
-  if (sum == 0) { r = 0; g = 0; b = 0; return; }
-  r = (uint8_t)((uint32_t)rawR * 10UL / sum);
-  g = (uint8_t)((uint32_t)rawG * 10UL / sum);
-  b = (uint8_t)((uint32_t)rawB * 10UL / sum);
-}
-
-// A complete one-character LF-terminated reply only. Other data => STOP.
-// Purging stale bytes prior to each request makes old replies less likely,
-// but 0/1 legacy packets have no sequence numbers: cannot guarantee matching.
-void flushOldReplies() {
-  while (Serial.available() > 0) (void)Serial.read();
-}
-
-bool readMotionPermission(bool &allowMotion) {
-  char data[4] = {0, 0, 0, 0};
-  uint8_t used = 0;
-  const unsigned long started = millis();
-  while (millis() - started < RESPONSE_TIMEOUT_MS) {
-    if (Serial.available() <= 0) continue;
-    const char ch = (char)Serial.read();
-    if (ch == '\r') continue;
-    if (ch == '\n') {
-      if (used != 1 || (data[0] != '0' && data[0] != '1')) return false;
-      allowMotion = (data[0] == '1');
-      return true;
-    }
-    if (used >= sizeof(data)) return false;
-    data[used++] = ch;
-  }
-  return false;
 }
 
 void setup() {
+  pinMode(IRL_PIN, INPUT); pinMode(IRR_PIN, INPUT);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
-  pinMode(IRL_PIN, INPUT);
-  pinMode(IRR_PIN, INPUT);
   pinMode(LmotorCW, OUTPUT); pinMode(LmotorCCW, OUTPUT);
   pinMode(RmotorCW, OUTPUT); pinMode(RmotorCCW, OUTPUT);
-  stopMotors();
-  Serial.begin(SERIAL_BAUD);
-  if (!tcs.begin()) {
-    while (true) { stopMotors(); delay(250); }
-  }
+  Serial.begin(BAUD_RATE);
+  tcs.begin();  // 실제 실패 처리 코드는 미확인
+  stopMotor();
 }
 
 void loop() {
-  uint8_t r, g, b;
-  readColorScores(r, g, b);
-  // INPUT_PULLUP -> LOW on press, transmit semantic value 1
-  const uint8_t button = digitalRead(BUTTON_PIN) == LOW ? 1 : 0;
+  float rf = 0, gf = 0, bf = 0;
+  tcs.getRGB(&rf, &gf, &bf);  // TCS34725 입력 예시; 과거 구현의 축척은 미확인
+  int r = (int)rf;
+  int g = (int)gf;
+  int b = (int)bf;
+  int button = (digitalRead(BUTTON_PIN) == LOW) ? 1 : 0;
 
-  flushOldReplies();
   Serial.print(r); Serial.print(':');
   Serial.print(g); Serial.print(':');
   Serial.print(b); Serial.print(':');
   Serial.println(button);
 
-  bool allowMotion = false;
-  if (readMotionPermission(allowMotion) && allowMotion) followLine();
-  else stopMotors(); // timeout, corrupted message, Pi stop result
-  delay(IDLE_DELAY_MS);
+  // 값 0/1이 반환되면 모터 정지 또는 기존 IR 라인 추종 수행.
+  // readStringUntil/줄바꿈 사용은 원본 미확인에 따른 최소한의 연결 방식.
+  // 이전 스케치의 대기 방식은 미확인. 기본 readStringUntil 타임아웃에 의존.
+  String response = Serial.readStringUntil('\n');
+  response.trim();
+  if (response == "0") stopMotor();
+  else if (response == "1") lineTrace();
 }

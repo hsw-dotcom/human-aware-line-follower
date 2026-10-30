@@ -1,0 +1,15 @@
+relative_path,classification,notes
+.gitignore,documentation,generated reconstruction
+README.md,documentation,final project explanation
+arduino/line_tracer/line_tracer.ino,dialogue-based restoration,not the original 2023 source
+raspberry_pi/main.py,dialogue-based restoration,not the original 2023 source
+raspberry_pi/count_objects.py,derived from Safe Watch,people detection subset restored
+raspberry_pi/requirements-reference.txt,reference,versions are not verified
+raspberry_pi/models/README.md,documentation,trained model files not recovered
+raspberry_pi/image/README.md,documentation,runtime capture file not provided
+simulation/trace.py,simulation,newly authored offline test
+tests/test_historical_logic.py,tests,newly authored offline unit tests
+tests/test_person_count.py,tests,newly authored offline unit tests
+docs/CONFIRMED_VS_INFERRED.md,documentation,evidence versus assumptions
+docs/FLOW_AND_GAPS.md,documentation,processing flow and open questions
+docs/FILE_MANIFEST.csv,documentation,repository contents

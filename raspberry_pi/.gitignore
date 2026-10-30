@@ -1,5 +1,0 @@
-config.ini
-runtime/
-__pycache__/
-*.pyc
-.env

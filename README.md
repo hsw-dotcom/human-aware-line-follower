@@ -1,36 +1,20 @@
-# 사람 인식 기반 라인트레이서 (2023.12)
+# 사람 인식 기반 라인트레이서 — 2023년 12월 대화 충실 복원본
 
-## 2023년 당시 대화에 충실한 복원본 — 먼저 확인하세요
+> **2023년 당시 작성한 소스코드 원본 전문이 아닙니다.**
+> 프로젝트 관련 과거 대화에서 확정된 코드·제어 규칙과 Safe Watch의 확인 가능한 사람 검출 소스를 근거로 복원한 최종 정리본입니다.
+> 하드웨어가 없으므로 코드·논리·입출력 시뮬레이션만 검토합니다.
 
-**[`historical_2023/`](historical_2023/README.md)**
+## 프로젝트 개요
 
-- 당시 대화의 핀 번호, `r:g:b:button` / `result(0/1)`, IR 진리표, 사람 검출 호출,
-  정지 상태 유지와 버튼 재출발 로직을 중심으로 복원했습니다.
-- Safe Watch에서 사용한 **TensorFlow Lite 사람 검출 기능만 추출**했다는 개발 경험을 반영했습니다.
-- 원본 `.ino`/`.py` 전문과 모델 가중치가 없어, 미확인 세부값은 *추정*으로 표시합니다.
-- Python 제어 규칙은 하드웨어 없이 단위테스트로 확인했습니다.
-- 2023년의 원본 코드와 파일 단위로 동일하다고 주장하지 않습니다.
+기존 Arduino 라인트레이서에 Raspberry Pi 카메라를 연계하여 작업 구간의 사람 인식 결과에 따라 정지·재출발하도록 한 2023년 과제입니다.
 
-## 이전 기능 개선·재구성본 (역사적 복원과 구분)
+- **Arduino**: IR 센서 라인 추종, TCS34725 색상 판별, 버튼, PWM 모터 제어
+- **Raspberry Pi**: 카메라 프레임을 `before.jpg`로 저장하고 `count_objects.detect()`로 인원 확인
+- **시리얼**: Arduino → Pi `r:g:b:button`, Pi → Arduino `0`(정지) / `1`(주행 허용)
+- **재출발**: 버튼 입력 시 1을 회신, 이후 1~3초의 감지 무시 구간을 두도록 실험
+- **사람 인식**: 별도 모델을 학습한 것이 아니라 Safe Watch의 TensorFlow Lite 사람 검출 기능을 필요한 부분만 추려서 재사용
 
-아래 `arduino/`, `raspberry_pi/`, `tests/`, `simulation/` 등 기존 구성은
-**나중에 재구성·추가한 비동기 처리·오류 대응을 포함한 개선본**입니다.
-역사적 구현의 직접 증거가 아닙니다. 삭제하지 않고 비교 자료로 남겨 둡니다.
-
----
-
-## 기존 개선본의 설명 (이전 README 기록)
-
-# 라인트레이서 사람 감지 정지 기능 (2023.12) — 대화 기록 기반 보완판
-
-> **원본 복구가 아니라, 사용자가 과거 대화에서 확정한 요구사항을 중심으로 재구성·보완한 코드입니다.**
-> `RECONSTRUCTED / DIALOGUE-ENHANCED` · Arduino 및 Pi 실기기 미검증
-
-## 무엇을 수행하는가
-
-기존 Arduino IR 라인트레이서의 주행을 유지하고, 특정 바닥색 구간에서 Raspberry Pi 카메라로 사람 존재를 확인하여 정지하도록 연동합니다. Arduino는 `r:g:b:button`을 보내고, Pi는 `0`(정지) 또는 `1`(라인 추종 허용)을 회신합니다. 버튼은 재출발을 허용하며, 재출발 뒤 약 1~3초 동안 정지 조건을 무시합니다.
-
-사용자의 당시 문답을 바탕으로 다음 규칙을 **그대로** 적용했습니다.
+## 확인된 핵심 판단식
 
 ```python
 color_condition = (r >= 4) or (r >= 2 * g) or (r >= 2 * b)
@@ -42,43 +26,43 @@ else:
     result = previous_result
 ```
 
-**주의:** 위 색상 판정식은 `r=g=b=0`일 때도 참입니다. 과거 식을 임의로 고치지 않았습니다. 실제 실험에서는 RGB 단위와 조도별 값을 꼭 측정해야 합니다.
+위 조건은 `r=g=b=0`에서도 색상 판정이 참이 되며, 색 조건만으로도 정지합니다. 당시 대화에 남은 최종 조건식을 고치지 않고 보존했습니다. 지정 구간에서만 실제로 촬영했는지, 색상 센서의 정확한 환산식은 확인되지 않습니다.
 
-## 디렉터리
+## 폴더 구성
 
-- `arduino/line_tracer/line_tracer.ino`: 모터·IR·TCS34725·버튼·시리얼(원본 배선 일부만 확인)
-- `raspberry_pi/line_tracer/`: 직렬 패킷, 판단 상태, 카메라, Safe Watch TFLite 인식 기능 추출 복원, 비동기 연동
-- `raspberry_pi/config.example.ini`: 포트, 캡처간격, 재출발 무시 시간 설정 예제
-- `tests/`: Python 단위테스트 및 인터페이스 검증
-- `simulation/`: 외부 장치가 없는 전형적 진행 시연
-- `docs/`: 대화에서 확인된 사항/추정 사항, 배선, 사용법, 검증 기록, 변경내역
-- `original_source/`: 실제 원본 미확보 알림
-
-## 실행
-
-```bash
-# 저장소 최상위 폴더에서 하드웨어 없는 테스트
-python3 -m unittest discover -s tests -v
-python3 simulation/demo.py
-
-# Pi에서 실행 전 반드시 배선/라이브러리 확인
-cp raspberry_pi/config.example.ini raspberry_pi/config.ini
-cd raspberry_pi
-python3 -m line_tracer.main --config config.ini
+```text
+arduino/line_tracer/line_tracer.ino  Arduino 측 코드 복원
+raspberry_pi/main.py                Pi 측 순차 처리와 제어 로직 복원
+raspberry_pi/count_objects.py       Safe Watch의 TFLite 사람 검출 부분을 추출한 복원
+raspberry_pi/models/               모델 가중치 미확보 안내
+raspberry_pi/image/                런타임 이미지 경로 안내
+tests/                             상태·사람 수 판정 테스트
+simulation/                        하드웨어 없는 시나리오
+docs/                              출처, 확정/추정 구분, 누락 사항
 ```
 
-현재 목표는 **하드웨어 없이 코드 및 제어 흐름을 복원**하는 것입니다. 실행 예시는 기록용이며 실제 장치 검증을 요구하지 않습니다.
+## 하드웨어 없이 실행 가능한 검증
 
-## 중요: 기록 기반 구현과 새롭게 보완한 구현을 구분
+```bash
+python3 -m unittest discover -s tests -v
+python3 simulation/trace.py
+python3 -m py_compile raspberry_pi/main.py raspberry_pi/count_objects.py
+```
 
-**기록 기반:** 핀 3, PWM 5/6/9/10, IR HIGH/LOW 주행 진리표, `r:g:b:button`, 결과 `0/1`, `before.jpg` 저장 후 `count_objects.detect()` 호출, 색상·버튼·이전상태 판단식, 재출발 후 1~3초 무시, 거리 3~5m 인식 시험 진술.
+실제 카메라/모델을 통한 추론에는 미확보된 `people_detect.tflite`와 해당 시스템의 라이브러리가 필요합니다. 하드웨어 구동·실측 성능은 검증하지 않았습니다.
 
-**새 보완:** 시리얼에 정확히 개행으로 응답하는 처리, 오류 시 정지, 딜레이가 긴 사람 감지를 별도 스레드에서 처리, 이전 감지 결과 폐기, 통신 파싱 검증, 상태 테스트, 시뮬레이터.
+## 확인된 부분과 가정한 부분
 
-**미확보/가정:** 실제 `.ino`·`.py` 원본, 사람 검출 모델 가중치, IR 연결 핀 2/4, USB 시리얼 9600bps, RGB 정규화, 각종 PWM·타임아웃 수치. 현재 `count_objects.py`는 Safe Watch 원본에서 확인된 TensorFlow Lite 사람 검출 경로만 남겨 복원했습니다. 실제 당시 라인트레이서 원본과 모델 파일은 미확보입니다.
+- 확정: 모터 PWM 핀 5/6/9/10, 버튼 핀 3, IR 입력 조합별 주행, RGB 시리얼 포맷, 최종 판단식, Safe Watch 사람 인식 기능 재사용
+- 추정: IR 물리 입력 핀, RGB 값 스케일, 시리얼 포트/속도/개행, 카메라 설정, 카메라 호출 시점, 재출발 무시의 정확한 최종 시간, 당시 추출 함수의 반환값
+- 배제: 비동기 워커, 현대식 상태 관리자, HOG 대체 감지, 미확인 자동 안전정지 정책 등 후대에 추가했던 설계
 
-기술적 유래와 제약 사항은 `docs/SOURCE_PROVENANCE.md`, `docs/DETAILED_BEHAVIOR.md`를 보세요.
+자세한 구분은 [확정·추정 목록](docs/CONFIRMED_VS_INFERRED.md)과 [처리 흐름·공백](docs/FLOW_AND_GAPS.md)을 참고하세요.
 
-## 이번에 확인된 코드 재사용 관계
+## 정리 이력과 원본 출처
 
-라인트레이서의 사람 인식 라이브러리는 Safe Watch에서 **사람 검출에 필요한 부분만 추출한 재사용 코드**입니다. Safe Watch에 남아 있는 원본 `count_objects.py`의 TensorFlow Lite (`people_detect.tflite`)·640×640 입력·class 0·confidence 0.2 판정 경로를 보존해 복원했습니다. 별도 모델 학습이나 OpenCV HOG 검출을 당시 구현으로 주장하지 않습니다. `docs/SAFEBWATCH_REUSE.md`와 [Safe Watch 원본](https://github.com/hsw-dotcom/safe-watch-crowd-monitoring/blob/main/src/python/count_objects.py)을 참고하세요.
+이 저장소는 **2023년 대화 충실 복원본 하나만 남긴 상태**입니다. 이전에 추가한 개선·재구성 코드 파일은 현재 브랜치에서 제거했으며 과거 Git 커밋 기록에만 남아 있습니다. 당시의 실제 라인트레이서 원본 파일을 찾았다는 뜻은 아닙니다.
+
+Safe Watch 참조 코드: https://github.com/hsw-dotcom/safe-watch-crowd-monitoring/blob/main/src/python/count_objects.py
+
+사람 검출 코드의 원래 기초에는 Evan Juras의 TensorFlow Lite 예제 코드가 사용되었습니다.
