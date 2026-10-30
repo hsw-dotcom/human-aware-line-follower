@@ -14,7 +14,7 @@
 
 [Pi 코드별 출처·개발 순서·충돌 사항](../docs/PI_CODE_VERSIONS.md) · [2023년 전체 대화 재대조](../docs/CHAT_HISTORY_AUDIT.md) · [시리얼 호환성과 오류](../docs/PI_SERIAL_AND_DEBUG_HISTORY.md) · [검출 재사용 근거](../docs/DETECTOR_REUSE_EVIDENCE.md) · [제어상 한계](../docs/CONTROL_LOGIC_AUDIT.md)
 
-**2023년 11월 23~24일 대화에서 Pi의 반복 프레임 저장·사람 검출이 색상 판정보다 앞서 실행된 흔적이 있습니다.** 현재 `main.py`는 매 반복 `sample_people()`을 실행해 최신 사람 수를 구하고, 그 후 RGB/버튼을 받아 정지 여부를 판단합니다. [시점 근거](../docs/CAPTURE_TIMING_EVIDENCE.md).
+**Pi는 정지구간 판정에 관여하지 않습니다.** `main.py`는 0.3초 주기를 목표로 프레임을 추출·사람 존재 여부를 갱신하고, 0=없음/1=있음 플래그를 Arduino에 전송합니다. 송신은 최초 1회와 플래그 변화 시에만 하도록 복원했으며 실제 2023년 최종 전송 빈도는 미확인입니다. [시점 근거](../docs/CAPTURE_TIMING_EVIDENCE.md).
 
 과거 문답에 등장한 `색 OR 사람` 판단식은 [제어식 문서](../docs/CONTROL_LOGIC_AUDIT.md)에 역사적 기록으로 보존했습니다. 실제 최종 역할은 **Pi=0/1 사람 존재 판단, Arduino=정지구간+사람 신호 결합**입니다. [역할 분담](../docs/FINAL_ROLE_DIVISION.md).
 
