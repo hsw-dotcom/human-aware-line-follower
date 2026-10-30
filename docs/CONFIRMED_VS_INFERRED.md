@@ -2,17 +2,23 @@
 
 | 대상 | 확인된 정보 | 이번 복원의 선택/추정 | 비고 |
 |---|---|---|---|
-| 라인 추종 | IR HH 전진, LH 좌, HL 우, LL 정지 | Arduino 분기문의 상세 모터 PWM 배열 | 소스 전문 미확보 |
+| 라인 추종 | IR HH 전진, LH 좌, HL 우, LL 정지 및 새로 제출된 Arduino 개발 코드의 분기 | 최종 채택 스케치 여부 | 상세 스케치 6종이 새로 확보됨 |
 | 모터 핀 | L CW=5/CCW=6, R CW=9/CCW=10 | 속도 150 | 속도는 예시 |
 | 버튼 | D3 INPUT_PULLUP, 누름=1 | 연속 누름에서 타이머 1회만 시작 | 의도 기반 최소 구현 |
-| 색상 | TCS34725 / r>=4 OR r>=2*g OR r>=2*b | getRGB 캐스팅 / 입력 핀·축척 | 0:0:0도 참이므로 색 변환 검증 불가 |
-| Serial | Arduino→Pi r:g:b:button, Pi→Arduino result 0/1 | 9600 baud, 개행, /dev/ttyACM0 | 전송 프로토콜 상세 미확보 |
+| 색상 | TCS34725 / 과거 대화의 r>=4 OR r>=2*g OR r>=2*b / 일부 제출 스케치의 raw값 21504→1025 스케일링 | 최종 사용한 색상 환산식 | 0:0:0도 참이 되는 논리적 문제 남음 |
+| Serial | 당시 대화 r:g:b:button → 0/1, 새 스케치들에 9600 baud·수신 정수·별도 ColorValues/ButtonState 형식 확인 | 최종 포맷·0/1 의미·개행·/dev/ttyACM0 | 버전별 통신 의미가 다름 |
 | Raspberry Pi | before.jpg 저장 후 count_objects.detect() 호출 | 특정 색 구간에서만 촬영/검출 | 실제 호출 시점·주기 미확보 |
 | 판단 | 버튼1→1; 색 또는 사람→0; 아니면 이전 result | 초기 previous_result=1 | 원식은 확인, 초기값은 미확인 |
 | 재출발 | 1~3초 감지 무시 시험 | 기본값 2초, 단발 타이머 | 최종 시간 미확인 |
 | 인식 | Safe Watch에서 사람 검출부만 추출 | 사람 수 정수 반환 | 원본 Safe Watch는 (people_num, obstacle_classes) 튜플 반환 |
 | Safe Watch 모델 | TFLite, 640x640, 사람 클래스0, 0.2 이상 | 해당 추출 기능을 Pi로 연동 | 모델 파일 미확보 |
 | 검증 | 3~5m에서 사람 인식한 시험 기록 | 실제 성능 재현 주장 안 함 | 하드웨어 없음 |
+
+## 새로 제공된 스케치의 추가 근거
+
+- IRL=7, IRR=8은 제출된 Arduino 개발 스케치 여러 버전에서 실제로 확인됩니다. 기존 복원본에 사용한 IR 핀 2/4는 대화 기반 임의 가정이며 이 자료와 불일치합니다.
+- 시리얼 9600bps 및 모터 속도 255가 여러 스케치에 나타납니다. 정지 판정의 회신 형식은 코드마다 달라 최종 채택 여부는 미확인입니다.
+- 스케치 전문과 버전별 오류는 [USER_SUPPLIED_ARDUINO_VERSIONS.md](USER_SUPPLIED_ARDUINO_VERSIONS.md)에 따로 정리했습니다.
 
 ## 이전 '재구성/개선' 코드에서 의도적으로 제거
 
