@@ -6,8 +6,9 @@
  *   BUTTON_PIN=3, INPUT_PULLUP, 눌리면 button=1
  *   IRL/IRR: HH 전진, LH 좌회전, HL 우회전, LL 정지
  *   Arduino -> Pi: r:g:b:button / Pi -> Arduino: 0 또는 1
- * 미확인: IR 핀, 모터 속도, RGB의 축척, Serial 속도·종결자
- * 따라서 이런 값은 별도의 '가정'으로 표시하며 역사적 사실로 쓰지 않음.
+ * 사용자 추가 제출 스케치 다수: IRL=7, IRR=8, speed=255, Serial=9600.
+ * 정확한 최종 배선·모터 극성·프로토콜 버전은 미확인.
+ * 이 스케치는 2026년 통합 복원이며 실제 2023년 실기기용 최종 소스가 아님.
  */
 #include <Wire.h>
 #include <Adafruit_TCS34725.h>
@@ -18,10 +19,10 @@ const int RmotorCW = 9;
 const int RmotorCCW = 10;
 const int BUTTON_PIN = 3;
 
-const int IRL_PIN = 2;         // 미확인, 동작을 설명하기 위한 임시 배선
-const int IRR_PIN = 4;         // 미확인
-const int DRIVE_SPEED = 150;  // 미확인
-const long BAUD_RATE = 9600;  // 미확인
+const int IRL_PIN = 7;         // 추가 제출된 여러 Arduino 스케치에서 확인된 값
+const int IRR_PIN = 8;         // 추가 제출된 여러 Arduino 스케치에서 확인된 값
+const int DRIVE_SPEED = 255;  // 추가 제출된 개발 스케치 값; 최종 구동값 미확인
+const long BAUD_RATE = 9600;  // 추가 제출된 개발 스케치에서 확인
 
 Adafruit_TCS34725 tcs = Adafruit_TCS34725();
 
