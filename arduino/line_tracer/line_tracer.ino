@@ -35,20 +35,21 @@ void lineTrace() {
   int IRL = digitalRead(IRL_PIN);
   int IRR = digitalRead(IRR_PIN);
 
+  // The motor polarity below matches the user-provided Arduino sketch.
+  // It differs from the earlier 2026 reconstructed direction assumptions.
   if (IRL == HIGH && IRR == HIGH) {        // 직진
-    analogWrite(LmotorCW, DRIVE_SPEED); analogWrite(LmotorCCW, 0);
+    analogWrite(LmotorCW, 0); analogWrite(LmotorCCW, DRIVE_SPEED);
     analogWrite(RmotorCW, DRIVE_SPEED); analogWrite(RmotorCCW, 0);
   } else if (IRL == LOW && IRR == HIGH) {  // 좌회전
-    analogWrite(LmotorCW, 0); analogWrite(LmotorCCW, 0);
+    analogWrite(LmotorCW, DRIVE_SPEED); analogWrite(LmotorCCW, 0);
     analogWrite(RmotorCW, DRIVE_SPEED); analogWrite(RmotorCCW, 0);
   } else if (IRL == HIGH && IRR == LOW) {  // 우회전
-    analogWrite(LmotorCW, DRIVE_SPEED); analogWrite(LmotorCCW, 0);
-    analogWrite(RmotorCW, 0); analogWrite(RmotorCCW, 0);
+    analogWrite(LmotorCW, 0); analogWrite(LmotorCCW, DRIVE_SPEED);
+    analogWrite(RmotorCW, 0); analogWrite(RmotorCCW, DRIVE_SPEED);
   } else {                                 // 정지
     stopMotor();
   }
 }
-
 void setup() {
   pinMode(IRL_PIN, INPUT); pinMode(IRR_PIN, INPUT);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
