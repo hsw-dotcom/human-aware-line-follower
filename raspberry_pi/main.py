@@ -8,16 +8,20 @@ Pi는 주행 중 반복적으로 카메라에서 프레임을 추출해 사람�
 신호 극성(현재 복원에서 선택, 최종 과거 파일 미확인):
     0 = 사람 없음
     1 = 사람 있음
-11월 24일 '결과가 달라질 때만 송신' 사용자 요구를 적용하고,
-최초 검출 결과는 반드시 한 번 전송합니다.
+2026-10-31 확인: 최신 인식 결과는 0.3초 주기로 갱신합니다.
+11월 24일 '결과가 달라질 때만 송신' 요청을 적용해 최초 1회 및
+0/1 변화 시에만 보냅니다. 촬영·추론이 0.3초보다 오래 걸리면 갱신도 늦어질 수 있습니다.
+이 코드는 정지구간·색상·버튼을 판단하지 않습니다.
 """
 from pathlib import Path
+import time
 
 import count_objects
 
 IMAGE_PATH = Path('/home/pi/project/image/before.jpg')  # Safe Watch 검출기 경로와 일치시킨 복원 선택
 SERIAL_PORT = '/dev/ttyACM0'                              # 독립 시리얼 시험에서 확인
 BAUD_RATE = 9600                                          # 사용자 제공 스케치에서 확인
+UPDATE_INTERVAL_SECONDS = 0.3                           # 사용자 직접 확인한 인식값 갱신 주기
 
 
 def get_ip(interface='wlan0'):
@@ -63,17 +67,29 @@ def send_if_changed(ser, flag, previous_flag):
     return flag
 
 
+def wait_until(target, clock, sleep):
+    """다음 인식 갱신 시각까지 대기. 이미 지났으면 즉시 진행."""
+    remaining = target - clock()
+    if remaining > 0:
+        sleep(remaining)
+
+
 def run():
-    """반복 촬영·인식 → Pi에서 0/1 변환 → Arduino로 존재 신호 송신."""
+    """약 0.3초 주기로 촬영·인식, 0/1이 변한 경우 Arduino에 전송."""
     import serial
 
     ip = get_ip()
     previous_flag = None
+    next_sample_at = time.monotonic()
     with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1) as arduino:
         while True:
+            wait_until(next_sample_at, time.monotonic, time.sleep)
+            started_at = time.monotonic()
             people_num = sample_people(ip)
             flag = people_to_flag(people_num)
             previous_flag = send_if_changed(arduino, flag, previous_flag)
+            # 300ms는 목표 갱신 간격이며, 추론 시간이 더 길면 실제 주기는 길어짐.
+            next_sample_at = started_at + UPDATE_INTERVAL_SECONDS
 
 
 if __name__ == '__main__':

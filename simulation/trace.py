@@ -1,30 +1,37 @@
-"""Arduino가 정지구간과 Pi의 0/1 사람 존재 플래그를 결합하는 개념 모의.
+"""Pi 0.3초 사람 존재 갱신과 Arduino의 색상·사람 동시 정지 조건 모의.
 
-실제 Arduino 하드웨어/스케치 실행 테스트가 아닌 Python 상태 전이 예시입니다.
-Pi는 '사람이 있는지 0/1'만 판단하며 색상은 알지 못합니다.
+Arduino 코드 자체를 실행한 테스트는 아니며, 역할·상태 전이 검토 예시입니다.
 """
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'raspberry_pi'))
-from main import people_to_flag
+from main import people_to_flag, UPDATE_INTERVAL_SECONDS
 
-stopped = False
-restart_ignore_until = -1.0
-examples = [
-    ('일반 구간 · 사람 없음', False, 0, False, 0.0),
-    ('먼 시야 사람 인식 · 구간 전', False, 2, False, 1.0),
-    ('정지구간 도착 · 사람 없음', True, 0, False, 2.0),
-    ('정지구간 도착 · 사람 있음', True, 1, False, 3.0),
-    ('사람 사라짐 · 정지 유지', False, 0, False, 4.0),
-    ('적재 후 버튼 재출발', True, 1, True, 5.0),
-    ('무시 시간 중 통과', True, 1, False, 6.0),
-    ('무시 종료 후 구간 재감지', True, 1, False, 7.1),
-]
-for title, stop_zone, people_count, button, now in examples:
-    flag = people_to_flag(people_count)   # Pi 작업
-    if button:
-        stopped = False
-        restart_ignore_until = now + 2.0  # 1~3초 중 예시값
-    elif now >= restart_ignore_until and stop_zone and flag == 1:
-        stopped = True                  # Arduino 작업
-    print(f'{title}: Pi={flag} Arduino-zone={stop_zone} → {"STOP" if stopped else "RUN"}')
+def arduino_decision(stopped, stop_zone, person_flag, button_pressed, ignoring):
+    """사용자 확인 동작을 모델링. 실제 Arduino 동작 검증은 아님."""
+    if button_pressed:
+        return False
+    if ignoring:
+        return stopped
+    return stopped or (stop_zone and person_flag == 1)
+
+def exercise():
+    assert UPDATE_INTERVAL_SECONDS == 0.3
+    stopped = False
+    cases = [
+        ('먼 시야에 사람 있지만 일반 구간', False, 3, False, False, False),
+        ('구간에 사람 없음', True, 0, False, False, False),
+        ('구간에서 사람 확인 후 정지', True, 1, False, False, True),
+        ('사람 사라져도 정지 유지', False, 0, False, False, True),
+        ('적재 후 버튼 입력', True, 1, True, False, False),
+        ('무시 중 색·사람 모두 있어도 통과', True, 1, False, True, False),
+        ('무시 만료 뒤 두 조건 다시 충족', True, 1, False, False, True),
+    ]
+    for label, zone, people_count, button, ignoring, expected in cases:
+        flag = people_to_flag(people_count)  # Pi: 0.3초마다 갱신되는 사람 존재 여부
+        stopped = arduino_decision(stopped, zone, flag, button, ignoring)
+        assert stopped == expected, label
+        print(f'{label}: Pi flag={flag}, Arduino stop-zone={zone} -> {"STOP" if stopped else "RUN"}')
+
+if __name__ == '__main__':
+    exercise()

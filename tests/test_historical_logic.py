@@ -9,6 +9,20 @@ import main
 
 
 class PiRoleTests(unittest.TestCase):
+    def test_update_interval_is_300ms(self):
+        self.assertEqual(main.UPDATE_INTERVAL_SECONDS, 0.3)
+
+    def test_wait_until_next_sample(self):
+        calls = []
+        main.wait_until(1.3, lambda: 1.0, calls.append)
+        self.assertAlmostEqual(calls[0], 0.3)
+        main.wait_until(1.3, lambda: 1.5, calls.append)
+        self.assertEqual(len(calls), 1)
+
+    def test_arduino_color_processing_is_not_done_in_pi(self):
+        self.assertFalse(hasattr(main, 'isStopZone'))
+        self.assertFalse(hasattr(main, 'IGNORE_MS'))
+
     def test_zero_people_is_zero(self):
         self.assertEqual(main.people_to_flag(0), 0)
 

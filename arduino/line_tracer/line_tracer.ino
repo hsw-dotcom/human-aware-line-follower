@@ -13,6 +13,9 @@
  *
  * 모터 핀·IR 핀·버튼 핀·9600bps·255는 사용자 제공 스케치를 따름.
  * 아래 색상 역치(r >= 5)는 사용자 제공 01 시험 스케치에서 선택.
+ * 2026-10-31 사용자 확인: 사람 인식은 0.3초 주기로 갱신하고,
+ * 색상 정지구간은 라벨/테이프 재질의 색에 따라 기준을 조정했으며,
+ * 정지 후 버튼 전까지 정지 유지, 재출발 직후 두 정지 조건 모두 무시.
  * 최종 채택된 RGB 환산식·정지구간 역치·재출발 무시 시간은 미확인.
  */
 #include <Wire.h>
@@ -27,7 +30,7 @@
 #define BUTTON_PIN 3
 
 const int driveSpeed = 255;
-const int STOP_ZONE_RED_MIN = 5;         // 개발 스케치 01의 시험값, 최종값 미확인
+const int STOP_ZONE_RED_MIN = 5;         // 라벨·테이프 색에 맞춰 조정했던 시험값; 최종값 미확인
 const unsigned long IGNORE_MS = 2000;    // 1~3초 실험 중 대표값; 최종값 아님
 
 Adafruit_TCS34725 TCS =
@@ -36,7 +39,7 @@ Adafruit_TCS34725 TCS =
 bool personDetected = false;            // Pi에서 수신한 마지막 0/1
 bool stoppedForLoading = false;
 bool buttonWasDown = false;
-bool ignoringStopZone = false;
+bool ignoringStopConditions = false;  // 버튼 후 사람·색상 두 정지 조건 모두 무시
 unsigned long restartTime = 0;
 
 void stopMotor() {
@@ -118,18 +121,26 @@ void loop() {
   bool buttonDown = (digitalRead(BUTTON_PIN) == LOW);
   if (buttonDown && !buttonWasDown) {
     stoppedForLoading = false;
-    ignoringStopZone = true;
+    ignoringStopConditions = true;
     restartTime = millis();
   }
   buttonWasDown = buttonDown;
 
-  if (ignoringStopZone && millis() - restartTime >= IGNORE_MS) {
-    ignoringStopZone = false;
+  if (ignoringStopConditions && millis() - restartTime >= IGNORE_MS) {
+    ignoringStopConditions = false;
   }
 
-  // 정지구간은 Arduino가 직접 읽음. Pi에는 RGB/버튼을 보내지 않음.
+  // 버튼 재출발 직후에는 '사람 있음' 신호와 정지구간 색상을 모두
+  // 정지 판단에 사용하지 않음. IR 라인 추종만 계속함.
+  // Pi의 촬영 자체를 중단한다는 뜻은 아님(그런 연동 기록은 없음).
+  if (ignoringStopConditions) {
+    lineTrace();
+    return;
+  }
+
+  // 정지구간은 Arduino가 직접 읽으며, Pi가 보낸 0/1 존재 신호와 AND 판정.
   bool stopZone = isStopZone();
-  if (!ignoringStopZone && stopZone && personDetected) {
+  if (stopZone && personDetected) {
     stoppedForLoading = true;
   }
 
