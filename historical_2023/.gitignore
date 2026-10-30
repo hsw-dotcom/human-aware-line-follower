@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+*.pyo
+raspberry_pi/image/*.jpg
+raspberry_pi/models/*.tflite
+.env
