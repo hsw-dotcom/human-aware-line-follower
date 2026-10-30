@@ -55,6 +55,14 @@ send_data_to_arduino(ser, result)
 
 또 다른 2023-11-24 대화에서는 `get_serial_data(ser)`의 `ser.readline().decode().strip()`, `send_data_to_arduino(ser,result)`의 `ser.write(f"{result}".encode())`가 제안되었습니다. 이것이 물리 시험 당시 사용한 최종 전송 코드인지는 확인되지 않았습니다.
 
+## 추가로 확인된 11월 24·28일 통신 실험
+
+- **2023-11-24 사용자 요구:** Arduino로는 `current_result` 하나를 보내고 **이전 결과와 값이 다를 때만 전송**. 현재 실행용 복원본이 매 입력에 응답하도록 작성된 것은 별도의 통신 계약에 따른 선택입니다.
+- **2023-11-28 사용자 제공 코드:** `people_num` 정수를 `ser.write(data.encode())`로 보내려다가 예외가 발생했고 `bytes([data])`로 수정해 시험했습니다. 이 raw byte 전송은 Arduino `Serial.parseInt()`와 호환되지 않아 정상 정지로 입증되지 않았습니다.
+- **카메라 입력:** 사용자 `get_ip()`는 `wlan0`를 확인하고 `get_frame(ip)`는 `http://<ip>:8000/stream.mjpg`의 프레임을 OpenCV로 읽습니다. 현 복원에 이 경로를 반영했으나 모델/카메라 실기기 검증은 하지 않았습니다.
+
+[통신·오류 기록](PI_SERIAL_AND_DEBUG_HISTORY.md) · [개발대화 재대조](CHAT_HISTORY_AUDIT.md).
+
 ## 4. 원본 경로와 데이터 형식의 충돌
 
 - **프레임 경로**: 2023-11-23 라인트레이서 개발 대화에서 `/home/pi/project/before.jpg`가 사용된 흔적이 있습니다. 별도로 확인된 Safe Watch 원본은 `/home/pi/project/image/before.jpg`입니다. 현재 Pi 복원본은 후자의 경로로 통일했으나 **역사적 최종 경로와 동일하다는 증거는 없습니다**.

@@ -5,14 +5,17 @@
 -> Arduino 송수신; 색상 구간에서만 촬영하는 분기 없음.
 사용자 확인: 먼 시야에서 미리 사람을 인식하고, 정지 구간을
 색상 센서가 감지할 때 사람 인식 결과를 함께 판정함.
-이 파일의 camera/serial 설정, 결과값 연동은 복원 및 추정.
+과거 사용자 코드에는 get_ip(wlan0)과 get_frame(ip)의 stream.mjpg 경로가 확인됨.
+촬영 경로·시리얼 결과값 연동은 개발 버전별로 달라 최종 값 미확인.
 """
 import time
 from pathlib import Path
 
 import count_objects
 
-# Safe Watch 원본을 참조한 예시 경로. 2023년 라인트레이서의 최종 경로 미확인.
+# 이 경로는 재사용한 Safe Watch count_objects.py와 일치시키려는 복원 선택.
+# 2023년 11월 라인트레이서 개발 코드는 /home/pi/project/before.jpg도 사용했고
+# 당시 경로 불일치로 이미지 열기 오류가 나타났음. 최종 경로 미확인.
 IMAGE_PATH = Path('/home/pi/project/image/before.jpg')
 SERIAL_PORT = '/dev/ttyACM0'     # 독립 시리얼 시험 원문에서 확인; 최종 통합 포트 미확인
 BAUD_RATE = 9600                 # Arduino/시리얼 시험 코드에서 확인
@@ -84,49 +87,65 @@ class LineTracerState:
         return self.previous_result
 
 
-def take_picture(picam2, image_path=IMAGE_PATH):
-    """카메라에서 1프레임 받아 before.jpg 저장. 설정/색상 형식은 추정."""
+def get_ip(interface='wlan0'):
+    """과거 사용자 코드의 netifaces 경로. 인터페이스 이름은 당시 wlan0."""
+    import netifaces as ni
+    ip_info = ni.ifaddresses(interface)
+    return ip_info[ni.AF_INET][0]['addr']
+
+
+def get_frame(ip, image_path=IMAGE_PATH):
+    """2023년 코드 기록의 stream.mjpg에서 프레임 1장을 저장.
+
+    이 코드는 Pi 내/주변 장치에서 제공된 MJPEG 스트림을 읽던
+    사용자 개발 코드에 근거하며, 최종 파일의 정확한 저장 경로는 미확인.
+    """
     import cv2
-    frame = picam2.capture_array()
+    url = 'http://' + ip + ':8000/stream.mjpg'
+    capture = cv2.VideoCapture(url)
+    try:
+        ret, img = capture.read()
+    finally:
+        capture.release()
+    if not ret or img is None:
+        raise RuntimeError('MJPEG stream frame not available: ' + url)
     image_path.parent.mkdir(parents=True, exist_ok=True)
-    if not cv2.imwrite(str(image_path), frame):
+    if not cv2.imwrite(str(image_path), img):
         raise OSError('image save failed: %s' % image_path)
 
 
-def sample_people(picam2):
-    """정지구간 센싱 전에도 반복되는 1회 촬영 및 사람 수 검출."""
-    take_picture(picam2, IMAGE_PATH)
+def sample_people(ip):
+    """색상 정지 구간의 감지 여부와 무관하게 1회 프레임 추출·검출."""
+    get_frame(ip)
     return count_objects.detect()
 
 
 def run():
-    """반복 프레임 추출→사람 인식→Arduino RGB/버튼 수신→판정→회신."""
+    """MJPEG 반복 프레임 추출→인식→Arduino RGB/버튼 수신→판정→회신."""
     import serial
-    from picamera2 import Picamera2
+    
 
     state = LineTracerState()
-    picam2 = Picamera2()
-    picam2.configure(picam2.create_preview_configuration())
-    picam2.start()
-    try:
-        with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1) as arduino:
-            while True:
+    ip = get_ip()
+    with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1) as arduino:
+        while True:
                 # 실제 11/23~24 대화의 Pi 루프에서는 촬영·검출이 먼저 실행됨.
                 # 이 코드는 매회 새 이미지를 처리하며 별도의 사람 검출 캐시를 만들지 않음.
-                people_num = sample_people(picam2)
-                line = arduino.readline()
-                if not line:
-                    continue
-                try:
-                    r, g, b, button = parse_arduino_message(line)
-                except (ValueError, UnicodeDecodeError):
-                    continue
-                result = state.process(
-                    r, g, b, button, people_num, time.monotonic())
-                # 개행/0,1 극성은 이 개발 단계에서 사용한 한 가지 통신 계약.
-                arduino.write((str(result) + '\n').encode('ascii'))
-    finally:
-        picam2.stop()
+            people_num = sample_people(ip)
+            line = arduino.readline()
+            if not line:
+                continue
+            try:
+                r, g, b, button = parse_arduino_message(line)
+            except (ValueError, UnicodeDecodeError):
+                continue
+            result = state.process(
+                r, g, b, button, people_num, time.monotonic())
+            # 일부 2023년 대화에서는 '결과 변경 시에만 송신'을 요구.
+            # 현재 통합 복원의 Arduino는 매 요청 후 응답을 기다리므로
+            # 그 규칙을 바로 적용하면 통신이 막힐 수 있어 매번 응답.
+            # 개행/0,1 극성은 개발 단계별 통신 계약 중 하나.
+            arduino.write((str(result) + '\n').encode('ascii'))
 
 
 if __name__ == '__main__':
