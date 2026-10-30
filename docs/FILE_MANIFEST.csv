@@ -1,15 +1,34 @@
 relative_path,classification,notes
-.gitignore,documentation,generated reconstruction
-README.md,documentation,final project explanation
-arduino/line_tracer/line_tracer.ino,dialogue-based restoration,not the original 2023 source
-raspberry_pi/main.py,dialogue-based restoration,not the original 2023 source
-raspberry_pi/count_objects.py,derived from Safe Watch,people detection subset restored
-raspberry_pi/requirements-reference.txt,reference,versions are not verified
-raspberry_pi/models/README.md,documentation,trained model files not recovered
-raspberry_pi/image/README.md,documentation,runtime capture file not provided
-simulation/trace.py,simulation,newly authored offline test
-tests/test_historical_logic.py,tests,newly authored offline unit tests
-tests/test_person_count.py,tests,newly authored offline unit tests
-docs/CONFIRMED_VS_INFERRED.md,documentation,evidence versus assumptions
-docs/FLOW_AND_GAPS.md,documentation,processing flow and open questions
-docs/FILE_MANIFEST.csv,documentation,repository contents
+.github/workflows/offline-checks.yml,documentation / project source,See README and docs for provenance
+.gitignore,documentation / project source,See README and docs for provenance
+README.md,documentation / project source,See README and docs for provenance
+arduino/line_tracer/line_tracer.ino,documentation / project source,See README and docs for provenance
+assets/2023_detector_reuse_test_redacted_1.jpg,redacted historical reference image,See README and docs for provenance
+assets/2023_detector_reuse_test_redacted_2.jpg,redacted historical reference image,See README and docs for provenance
+assets/2023_serial_test_redacted.jpg,redacted historical reference image,See README and docs for provenance
+docs/2023_FIELD_TEST_AND_LATENCY_IMPROVEMENT.md,documentation / project source,See README and docs for provenance
+docs/CONFIRMED_VS_INFERRED.md,documentation / project source,See README and docs for provenance
+docs/CONTROL_LOGIC_AUDIT.md,documentation / project source,See README and docs for provenance
+docs/DETECTOR_REUSE_EVIDENCE.md,documentation / project source,See README and docs for provenance
+docs/FILE_MANIFEST.csv,documentation / project source,See README and docs for provenance
+docs/FLOW_AND_GAPS.md,documentation / project source,See README and docs for provenance
+docs/PI_CODE_VERSIONS.md,documentation / project source,See README and docs for provenance
+docs/USER_SUPPLIED_ARDUINO_VERSIONS.md,documentation / project source,See README and docs for provenance
+historical_snippets/01_color_and_human_stop.ino,historical Arduino reference,See README and docs for provenance
+historical_snippets/02_serial_echo_test.ino,historical Arduino reference,See README and docs for provenance
+historical_snippets/02_serial_echo_test.py,user-provided Pi serial test,See README and docs for provenance
+historical_snippets/03_rgb_button_result_experiment.ino,historical Arduino reference,See README and docs for provenance
+historical_snippets/04_motion_state_first_attempt.ino,historical Arduino reference,See README and docs for provenance
+historical_snippets/05_motion_state_300ms.ino,historical Arduino reference,See README and docs for provenance
+historical_snippets/06_stop_on_300ms_communication.ino,historical Arduino reference,See README and docs for provenance
+historical_snippets/07_motion_state_after_serial_poll.ino,historical Arduino reference,See README and docs for provenance
+historical_snippets/PI_CODE_EVIDENCE.md,historical evidence documentation,See README and docs for provenance
+raspberry_pi/README.md,Pi folder reference,See README and docs for provenance
+raspberry_pi/count_objects.py,Safe Watch derived person detection reconstruction,See README and docs for provenance
+raspberry_pi/image/README.md,Pi folder reference,See README and docs for provenance
+raspberry_pi/main.py,dialogue-based Pi reconstruction,See README and docs for provenance
+raspberry_pi/models/README.md,Pi folder reference,See README and docs for provenance
+raspberry_pi/requirements-reference.txt,Pi folder reference,See README and docs for provenance
+simulation/trace.py,offline verification,See README and docs for provenance
+tests/test_historical_logic.py,offline verification,See README and docs for provenance
+tests/test_person_count.py,offline verification,See README and docs for provenance

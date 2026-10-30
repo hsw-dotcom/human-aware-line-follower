@@ -17,6 +17,15 @@
 
 **아래 통합 복원 코드(`arduino/line_tracer/line_tracer.ino`, `raspberry_pi/main.py`)는 원본 스케치와 별개입니다.** 어떤 스케치를 최종 실기기에 사용했는지는 아직 미확인입니다.
 
+## Raspberry Pi Python 코드 정리
+
+- [Pi 코드별 개발 흐름과 원본·수정 제안·복원본 구분](docs/PI_CODE_VERSIONS.md)
+- [Pi 파일 안내](raspberry_pi/README.md)
+- [실제 사용자 제공 시리얼 테스트 원문](historical_snippets/02_serial_echo_test.py)
+- [Pi 역사적 코드 흔적의 범위](historical_snippets/PI_CODE_EVIDENCE.md)
+
+2023년 11월 23~24일 대화에서 `get_frame()`, `count_objects.detect()`, `send_data_to_arduino()`, `/dev/ttyACM0`, `9600bps` 등을 확인했습니다. **실제 최종 Pi `main.py` 전체 원문은 미확보**이며, 저장소의 `raspberry_pi/main.py`는 후대 복원본입니다.
+
 ## 프로젝트 개요
 
 기존 Arduino 라인트레이서에 Raspberry Pi 카메라를 연계해 **적재 구간에서 사람 인식 시 정지하고, 적재 후 버튼으로 재출발**하도록 개선한 2023년 과제입니다. 사용자는 **실제 장치에서 사람 인식 후 정지 시험이 성공했다**고 확인했습니다. 다만 현재 공개된 통합 소스는 2023년 원문이 아닌 **2026년 대화 기반 복원본**이므로 당시 성공한 최종 프로그램과 동일하게 동작한다고 주장하지 않습니다.
