@@ -1,69 +1,45 @@
-"""카메라·Arduino 없이 대화 기반 주요 기능과 최신 요구사항 검증."""
+"""Pi의 인원 수→0/1 변환 및 변경 시 전송 검증. Arduino와 RGB 판단은 Pi의 책임이 아님."""
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import Mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'raspberry_pi'))
 import main
 
 
-class HistoricalLogicTests(unittest.TestCase):
-    def test_serial_format(self):
-        self.assertEqual(main.parse_arduino_message('2:3:4:1\n'), (2, 3, 4, 1))
-        self.assertEqual(main.parse_arduino_message(b'2:3:4:0\r\n'), (2, 3, 4, 0))
-        for malformed in ('2:3:4', '2:3:4:7', 'wrong', '1:2:3:4:5'):
-            with self.subTest(malformed=malformed), self.assertRaises(ValueError):
-                main.parse_arduino_message(malformed)
+class PiRoleTests(unittest.TestCase):
+    def test_zero_people_is_zero(self):
+        self.assertEqual(main.people_to_flag(0), 0)
 
-    def test_recorded_rgb_expression(self):
-        self.assertFalse(main.color_condition(1, 3, 3))
-        self.assertTrue(main.color_condition(4, 3, 3))
-        self.assertTrue(main.color_condition(3, 1, 3))
-        self.assertTrue(main.color_condition(3, 3, 1))
-        self.assertTrue(main.color_condition(0, 0, 0))  # 역사적 식의 한계
+    def test_one_or_multiple_people_is_one(self):
+        self.assertEqual(main.people_to_flag(1), 1)
+        self.assertEqual(main.people_to_flag(3), 1)
+        self.assertEqual(main.people_to_flag(10), 1)
 
-    def test_button_priority(self):
-        self.assertEqual(main.decide_result(5, 1, 1, 1, 8, 0), 1)
+    def test_first_zero_is_sent(self):
+        ser = Mock()
+        prev = main.send_if_changed(ser, 0, None)
+        self.assertEqual(prev, 0)
+        ser.write.assert_called_once_with(b'0\n')
 
-    def test_zone_and_waiting_person_required(self):
-        self.assertEqual(main.decide_result(5, 1, 1, 0, 0, 1), 1)
-        self.assertEqual(main.decide_result(1, 3, 3, 0, 2, 1), 1)
-        self.assertEqual(main.decide_result(5, 1, 1, 0, 1, 1), 0)
+    def test_send_only_on_change(self):
+        ser = Mock()
+        prev = None
+        for count in [0, 0, 2, 5, 0, 0]:
+            prev = main.send_if_changed(ser, main.people_to_flag(count), prev)
+        self.assertEqual([c.args[0] for c in ser.write.call_args_list],
+                         [b'0\n', b'1\n', b'0\n'])
 
-    def test_last_people_detection_already_exists_before_marker(self):
-        state = main.LineTracerState()
-        # 사람은 먼 곳에서 발견됐지만 아직 정지 구간이 아니므로 계속 주행.
-        self.assertEqual(state.process(1, 3, 3, 0, 1, 0.0), 1)
-        # 구간 감지 시점의 최신 검출값을 사용해 즉시 정지.
-        self.assertEqual(state.process(5, 1, 1, 0, 1, 1.0), 0)
+    def test_pi_does_not_include_color_or_button_logic(self):
+        self.assertFalse(hasattr(main, 'color_condition'))
+        self.assertFalse(hasattr(main, 'LineTracerState'))
+        self.assertFalse(hasattr(main, 'parse_arduino_message'))
 
-    def test_people_missing_at_marker_does_not_stop(self):
-        state = main.LineTracerState()
-        self.assertEqual(state.process(5, 1, 1, 0, 0, 1.0), 1)
-
-    def test_stop_latch(self):
-        state = main.LineTracerState()
-        self.assertEqual(state.process(5, 1, 1, 0, 1, 1), 0)
-        self.assertEqual(state.process(1, 3, 3, 0, 0, 2), 0)
-        self.assertEqual(state.process(5, 1, 1, 0, 0, 3), 0)
-
-    def test_button_restart_and_temporary_marker_ignore(self):
-        state = main.LineTracerState(ignore_seconds=2)
-        self.assertEqual(state.process(5, 1, 1, 0, 1, 1), 0)
-        self.assertEqual(state.process(5, 1, 1, 1, 1, 2), 1)
-        self.assertEqual(state.process(5, 1, 1, 0, 1, 3), 1)
-        self.assertEqual(state.process(5, 1, 1, 0, 1, 4.1), 0)
-
-    def test_button_hold_does_not_extend_ignore_time(self):
-        state = main.LineTracerState(ignore_seconds=2)
-        state.process(5, 1, 1, 1, 1, 1)
-        state.process(5, 1, 1, 1, 1, 2)
-        self.assertEqual(state.process(5, 1, 1, 0, 1, 3.1), 0)
-
-    def test_ignore_range(self):
-        for seconds in (0.5, 3.1):
-            with self.subTest(seconds=seconds), self.assertRaises(ValueError):
-                main.LineTracerState(ignore_seconds=seconds)
+    def test_only_presence_not_raw_count_is_sent(self):
+        ser = Mock()
+        main.send_if_changed(ser, main.people_to_flag(8), None)
+        ser.write.assert_called_once_with(b'1\n')
 
 
 if __name__ == '__main__':

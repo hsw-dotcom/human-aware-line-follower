@@ -1,83 +1,139 @@
 /*
- * 2023.12 라인트레이서 — 대화 충실 복원 (실제 .ino 원문은 미확보)
+ * 사람 인식 기반 라인트레이서 — 2026년 역할 분담 교정 복원본.
+ * 2023년 실제 최종 .ino 원문은 아직 확보하지 못했습니다.
  *
- * 확인된 숫자/규칙:
- *   LmotorCW=5, LmotorCCW=6, RmotorCW=9, RmotorCCW=10
- *   BUTTON_PIN=3, INPUT_PULLUP, 눌리면 button=1
- *   IRL/IRR: HH 전진, LH 좌회전, HL 우회전, LL 정지
- *   Arduino -> Pi: r:g:b:button / Pi -> Arduino: 0 또는 1
- * 사용자 추가 제출 스케치 다수: IRL=7, IRR=8, speed=255, Serial=9600.
- * 정확한 최종 배선·모터 극성·프로토콜 버전은 미확인.
- * 이 스케치는 2026년 통합 복원이며 실제 2023년 실기기용 최종 소스가 아님.
+ * 확인된 역할:
+ *   Raspberry Pi: 사람 검출 → 존재 여부를 0/1로 변환해 송신
+ *   Arduino: TCS34725 정지구간 감지 + Pi의 사람 존재 신호로 정지 판단
+ *            IR 라인 추종, 버튼 재출발
+ *
+ * 현재 복원에서 선택한 신호 극성(최종 과거 원문 미확인):
+ *   1 = 사람 인식, 0 = 사람 없음
+ * 실제 Arduino 개발 스케치에는 'receivedNumber != 0이면 정지'가 존재함.
+ *
+ * 모터 핀·IR 핀·버튼 핀·9600bps·255는 사용자 제공 스케치를 따름.
+ * 아래 색상 역치(r >= 5)는 사용자 제공 01 시험 스케치에서 선택.
+ * 최종 채택된 RGB 환산식·정지구간 역치·재출발 무시 시간은 미확인.
  */
 #include <Wire.h>
 #include <Adafruit_TCS34725.h>
 
-const int LmotorCW = 5;
-const int LmotorCCW = 6;
-const int RmotorCW = 9;
-const int RmotorCCW = 10;
-const int BUTTON_PIN = 3;
+#define LmotorCW 5
+#define LmotorCCW 6
+#define RmotorCW 9
+#define RmotorCCW 10
+#define IRL 7
+#define IRR 8
+#define BUTTON_PIN 3
 
-const int IRL_PIN = 7;         // 추가 제출된 여러 Arduino 스케치에서 확인된 값
-const int IRR_PIN = 8;         // 추가 제출된 여러 Arduino 스케치에서 확인된 값
-const int DRIVE_SPEED = 255;  // 추가 제출된 개발 스케치 값; 최종 구동값 미확인
-const long BAUD_RATE = 9600;  // 추가 제출된 개발 스케치에서 확인
+const int driveSpeed = 255;
+const int STOP_ZONE_RED_MIN = 5;         // 개발 스케치 01의 시험값, 최종값 미확인
+const unsigned long IGNORE_MS = 2000;    // 1~3초 실험 중 대표값; 최종값 아님
 
-Adafruit_TCS34725 tcs = Adafruit_TCS34725();
+Adafruit_TCS34725 TCS =
+    Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_50MS, TCS34725_GAIN_4X);
+
+bool personDetected = false;            // Pi에서 수신한 마지막 0/1
+bool stoppedForLoading = false;
+bool buttonWasDown = false;
+bool ignoringStopZone = false;
+unsigned long restartTime = 0;
 
 void stopMotor() {
-  analogWrite(LmotorCW, 0); analogWrite(LmotorCCW, 0);
-  analogWrite(RmotorCW, 0); analogWrite(RmotorCCW, 0);
+  analogWrite(LmotorCW, 0);
+  analogWrite(LmotorCCW, 0);
+  analogWrite(RmotorCW, 0);
+  analogWrite(RmotorCCW, 0);
+}
+
+void forward() {
+  analogWrite(LmotorCW, 0);
+  analogWrite(LmotorCCW, driveSpeed);
+  analogWrite(RmotorCW, driveSpeed);
+  analogWrite(RmotorCCW, 0);
+}
+
+void left() {
+  analogWrite(LmotorCW, driveSpeed);
+  analogWrite(LmotorCCW, 0);
+  analogWrite(RmotorCW, driveSpeed);
+  analogWrite(RmotorCCW, 0);
+}
+
+void right() {
+  analogWrite(LmotorCW, 0);
+  analogWrite(LmotorCCW, driveSpeed);
+  analogWrite(RmotorCW, 0);
+  analogWrite(RmotorCCW, driveSpeed);
 }
 
 void lineTrace() {
-  int IRL = digitalRead(IRL_PIN);
-  int IRR = digitalRead(IRR_PIN);
+  int l = digitalRead(IRL);
+  int r = digitalRead(IRR);
+  if (l == HIGH && r == HIGH) forward();
+  else if (l == LOW && r == HIGH) left();
+  else if (l == HIGH && r == LOW) right();
+  else stopMotor();
+}
 
-  // The motor polarity below matches the user-provided Arduino sketch.
-  // It differs from the earlier 2026 reconstructed direction assumptions.
-  if (IRL == HIGH && IRR == HIGH) {        // 직진
-    analogWrite(LmotorCW, 0); analogWrite(LmotorCCW, DRIVE_SPEED);
-    analogWrite(RmotorCW, DRIVE_SPEED); analogWrite(RmotorCCW, 0);
-  } else if (IRL == LOW && IRR == HIGH) {  // 좌회전
-    analogWrite(LmotorCW, DRIVE_SPEED); analogWrite(LmotorCCW, 0);
-    analogWrite(RmotorCW, DRIVE_SPEED); analogWrite(RmotorCCW, 0);
-  } else if (IRL == HIGH && IRR == LOW) {  // 우회전
-    analogWrite(LmotorCW, 0); analogWrite(LmotorCCW, DRIVE_SPEED);
-    analogWrite(RmotorCW, 0); analogWrite(RmotorCCW, DRIVE_SPEED);
-  } else {                                 // 정지
-    stopMotor();
+void updatePersonSignal() {
+  // ASCII 0/1만 제어 신호로 처리, 줄바꿈은 무시.
+  // 2023년 최종 송신 종료문자는 미확인.
+  while (Serial.available() > 0) {
+    int c = Serial.read();
+    if (c == '1') personDetected = true;
+    else if (c == '0') personDetected = false;
   }
 }
+
+bool isStopZone() {
+  // RGB 읽기/환산은 사용자 제공 초기 TCS34725 스케치를 참고.
+  uint16_t red, green, blue, clear;
+  TCS.getRawData(&red, &green, &blue, &clear);
+  int r = map(red, 0, 21504, 0, 1025);
+  // 당시 정지구간의 최종 판정식은 확인되지 않았습니다.
+  return r >= STOP_ZONE_RED_MIN;
+}
+
 void setup() {
-  pinMode(IRL_PIN, INPUT); pinMode(IRR_PIN, INPUT);
+  pinMode(LmotorCW, OUTPUT);
+  pinMode(LmotorCCW, OUTPUT);
+  pinMode(RmotorCW, OUTPUT);
+  pinMode(RmotorCCW, OUTPUT);
+  pinMode(IRL, INPUT);
+  pinMode(IRR, INPUT);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
-  pinMode(LmotorCW, OUTPUT); pinMode(LmotorCCW, OUTPUT);
-  pinMode(RmotorCW, OUTPUT); pinMode(RmotorCCW, OUTPUT);
-  Serial.begin(BAUD_RATE);
-  tcs.begin();  // 실제 실패 처리 코드는 미확인
+  Serial.begin(9600);
   stopMotor();
+
+  if (!TCS.begin()) {
+    // 개발 스케치의 센서 초기화 실패 시 중단 방식을 따름.
+    while (true) stopMotor();
+  }
 }
 
 void loop() {
-  float rf = 0, gf = 0, bf = 0;
-  tcs.getRGB(&rf, &gf, &bf);  // TCS34725 입력 예시; 과거 구현의 축척은 미확인
-  int r = (int)rf;
-  int g = (int)gf;
-  int b = (int)bf;
-  int button = (digitalRead(BUTTON_PIN) == LOW) ? 1 : 0;
+  updatePersonSignal();
 
-  Serial.print(r); Serial.print(':');
-  Serial.print(g); Serial.print(':');
-  Serial.print(b); Serial.print(':');
-  Serial.println(button);
+  bool buttonDown = (digitalRead(BUTTON_PIN) == LOW);
+  if (buttonDown && !buttonWasDown) {
+    stoppedForLoading = false;
+    ignoringStopZone = true;
+    restartTime = millis();
+  }
+  buttonWasDown = buttonDown;
 
-  // 값 0/1이 반환되면 모터 정지 또는 기존 IR 라인 추종 수행.
-  // readStringUntil/줄바꿈 사용은 원본 미확인에 따른 최소한의 연결 방식.
-  // 이전 스케치의 대기 방식은 미확인. 기본 readStringUntil 타임아웃에 의존.
-  String response = Serial.readStringUntil('\n');
-  response.trim();
-  if (response == "0") stopMotor();
-  else if (response == "1") lineTrace();
+  if (ignoringStopZone && millis() - restartTime >= IGNORE_MS) {
+    ignoringStopZone = false;
+  }
+
+  // 정지구간은 Arduino가 직접 읽음. Pi에는 RGB/버튼을 보내지 않음.
+  bool stopZone = isStopZone();
+  if (!ignoringStopZone && stopZone && personDetected) {
+    stoppedForLoading = true;
+  }
+
+  // 한 번 멈춘 후에는 버튼을 누르기 전까지 정지 상태 유지.
+  if (stoppedForLoading) stopMotor();
+  else lineTrace();
 }
