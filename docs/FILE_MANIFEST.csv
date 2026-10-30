@@ -8,6 +8,7 @@ assets/2023_detector_reuse_test_redacted_2.jpg,redacted historical reference ima
 assets/2023_serial_test_redacted.jpg,redacted historical reference image,See README and docs for provenance
 docs/2023_FIELD_TEST_AND_LATENCY_IMPROVEMENT.md,documentation / project source,See README and docs for provenance
 docs/CONFIRMED_VS_INFERRED.md,documentation / project source,See README and docs for provenance
+docs/CAPTURE_TIMING_EVIDENCE.md,documentation / historical dialogue evidence,See README and docs for provenance
 docs/CONTROL_LOGIC_AUDIT.md,documentation / project source,See README and docs for provenance
 docs/DETECTOR_REUSE_EVIDENCE.md,documentation / project source,See README and docs for provenance
 docs/FILE_MANIFEST.csv,documentation / project source,See README and docs for provenance

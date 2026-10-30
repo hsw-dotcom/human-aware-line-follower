@@ -23,8 +23,9 @@
 - [Pi 파일 안내](raspberry_pi/README.md)
 - [실제 사용자 제공 시리얼 테스트 원문](historical_snippets/02_serial_echo_test.py)
 - [Pi 역사적 코드 흔적의 범위](historical_snippets/PI_CODE_EVIDENCE.md)
+- [**2023년 대화의 촬영 시점 근거**](docs/CAPTURE_TIMING_EVIDENCE.md)
 
-2023년 11월 23~24일 대화에서 `get_frame()`, `count_objects.detect()`, `send_data_to_arduino()`, `/dev/ttyACM0`, `9600bps` 등을 확인했습니다. **실제 최종 Pi `main.py` 전체 원문은 미확보**이며, 저장소의 `raspberry_pi/main.py`는 후대 복원본입니다.
+2023년 11월 23~24일 대화의 사용자 코드에서 **반복 `get_frame()` → `count_objects.detect()` → Arduino 송수신**의 순서를 확인했습니다. 정지구간 이후에야 촬영을 시작하는 분기는 없었습니다. 따라서 현재 Pi 복원은 **주행 중 반복 프레임 추출·검출을 먼저 수행하고, 이후 색상 센서의 정지구간 조건과 결합**합니다. 다른 기록에서 `send_data_to_arduino()`, `/dev/ttyACM0`, `9600bps` 등도 확인했습니다. **실제 최종 Pi `main.py` 전체 원문은 미확보**이며, 저장소의 `raspberry_pi/main.py`는 후대 복원본입니다.
 
 ## 프로젝트 개요
 
@@ -101,21 +102,22 @@ docs/                              출처, 확정/추정 구분, 누락 사항
 ```
 
 
-## 장치 간 흐름도 (현재 목적 복원본)
+## 장치 간 흐름도 (2023년 대화의 순서를 반영한 복원)
 
 ```mermaid
 flowchart TD
-  A[Arduino IR 라인 추종·색상 센서] --> B[Pi에 RGB와 버튼 상태 전송]
-  B --> C{지정 검사 구간?}
-  C -- 아니요 --> D[이전 주행 상태 유지]
-  C -- 예 --> E[카메라 촬영·사람 검출]
-  E --> F{대기자 1명 이상?}
-  F -- 아니요 --> D
-  F -- 예 --> G[정지 0 · 적재 대기]
-  G --> H[적재 후 버튼 재출발]
+  A[주행 중 반복 프레임 추출] --> B[before.jpg 저장 및 사람 검출]
+  B --> C[최신 사람 수 people_num]
+  C --> D[Arduino에서 RGB/버튼 수신]
+  D --> E{정지구간 색상 감지?}
+  E -- 아니요 --> F[이전 주행 상태 유지]
+  E -- 예 --> G{people_num > 0?}
+  G -- 아니요 --> F
+  G -- 예 --> H[정지 · 적재 대기]
+  H --> I[적재 후 버튼 재출발]
 ```
 
-이 그림은 **사용자가 확인한 목적에 맞춘 2026년 복원 흐름**입니다. 검출을 정지 구간보다 일찍 시작했던 정확한 타이밍과 대기자 ROI는 원본 미확보로 복원하지 못했습니다.
+여기서 **연속 동영상 녹화**가 아니라 스트림에서 **한 프레임씩 반복 추출·인식**한 것이 당시 코드로 확인된 동작입니다. 검출 결과를 여러 반복에 걸쳐 캐싱했는지, 실제 검사 주기·ROI·정지 지점과 조기 검출 지점의 거리값은 미확인입니다. [원문 흔적 비교](docs/CAPTURE_TIMING_EVIDENCE.md).
 
 ## 하드웨어 없이 실행 가능한 검증
 
