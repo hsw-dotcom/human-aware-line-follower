@@ -22,9 +22,28 @@ class HistoricalLogicTests(unittest.TestCase):
     def test_button_priority(self):
         self.assertEqual(main.decide_result(5,1,1,1,8,0), 1)
 
-    def test_color_or_person_stop(self):
-        self.assertEqual(main.decide_result(5,1,1,0,0,1), 0)
-        self.assertEqual(main.decide_result(1,3,3,0,2,1), 0)
+    def test_stop_requires_zone_and_person(self):
+        self.assertEqual(main.decide_result(5,1,1,0,0,1), 1)
+        self.assertEqual(main.decide_result(1,3,3,0,2,1), 1)
+        self.assertEqual(main.decide_result(5,1,1,0,1,1), 0)
+        self.assertEqual(main.decide_result(5,1,1,0,2,1), 0)
+
+    def test_stop_latches_even_after_person_leaves(self):
+        self.assertEqual(main.decide_result(5,1,1,0,0,0), 0)
+        self.assertEqual(main.decide_result(1,3,3,0,0,0), 0)
+
+    def test_same_marker_with_zero_or_one_person_changes_output(self):
+        state = main.LineTracerState()
+        self.assertEqual(state.process(5,1,1,0,lambda: 0,1),1)
+        self.assertEqual(state.process(5,1,1,0,lambda: 1,2),0)
+        self.assertEqual(state.process(5,1,1,0,lambda: 0,3),0)
+
+    def test_person_outside_marker_does_not_trigger_camera(self):
+        state = main.LineTracerState()
+        called=[]
+        self.assertEqual(state.process(1,3,3,0,lambda: called.append(1) or 4,1),1)
+        self.assertEqual(called,[])
+
 
     def test_previous_state_retained(self):
         self.assertEqual(main.decide_result(1,3,3,0,0,0), 0)
@@ -37,7 +56,7 @@ class HistoricalLogicTests(unittest.TestCase):
         self.assertEqual(result,1)
         self.assertEqual(called,[])
         result=state.process(5,1,1,0,lambda: called.append('shot') or 0,1)
-        self.assertEqual(result,0)
+        self.assertEqual(result,1)  # 사람 0명은 정지하지 않음
         self.assertEqual(called,['shot'])
 
     def test_button_restarts_for_two_seconds(self):
@@ -58,7 +77,7 @@ class HistoricalLogicTests(unittest.TestCase):
         state=main.LineTracerState(ignore_seconds=2)
         state.process(5,1,1,1,lambda: 0,1)
         state.process(5,1,1,1,lambda: 0,2)
-        self.assertEqual(state.process(5,1,1,0,lambda: 0,3.1),0)
+        self.assertEqual(state.process(5,1,1,0,lambda: 1,3.1),0)
 
     def test_ignore_time_documented_range(self):
         for seconds in (0.5,3.1):

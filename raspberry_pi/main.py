@@ -2,7 +2,8 @@
 
 실제 2023년 소스 전문은 확인되지 않았음.
 확정: r:g:b:button -> result(0/1); before.jpg -> count_objects.detect();
-       버튼 우선, 색 또는 사람 감지 시 정지, 그 외 previous_result 유지;
+       실제 목표: 특정 구간에서 대기 중인 사람이 있을 때만 정지;
+       과거 대화의 색 OR 사람 조건은 docs/CONTROL_LOGIC_AUDIT.md에 원문 보존;
        버튼 재시작 뒤 1~3초 감지 무시.
 추정: 시리얼 포트/속도, 카메라 세부 초기화, 반복 호출 위치, 줄바꿈 종결.
 """
@@ -38,10 +39,14 @@ def color_condition(r, g, b):
 
 
 def decide_result(r, g, b, button, people_num, previous_result):
-    """대화에서 최종 확인한 우선순위: 버튼 > 색/사람 > 이전 결과."""
+    """2026년 목표 교정 복원: 버튼 > (작업 구간 AND 대기자) > 이전 상태.
+
+    과거 대화에 남은 OR 조건식은 문서에 원형 그대로 보존.
+    이 AND 변경은 역사적 원문 재현이 아닌 사용자 목표를 반영한 수정.
+    """
     if button == 1:
         return 1
-    if color_condition(r, g, b) or people_num != 0:
+    if color_condition(r, g, b) and people_num != 0:
         return 0
     return previous_result
 
@@ -75,8 +80,8 @@ class LineTracerState:
             return 1
 
         people_num = 0
-        # 기록에는 '바닥색으로 구간을 구분한 후 사람 감지'가 있음.
-        # 정확한 프레임 수집 조건은 원본 미확보이므로 이 분기는 추정.
+        # 색상은 '사람을 검사할 구간' 표시일 뿐 단독 정지 조건이 아님.
+        # 촬영 구간·시간 및 대기자 ROI는 원본 미확보로 추정.
         if color_condition(r, g, b):
             people_num = detect_people()
         self.previous_result = decide_result(
