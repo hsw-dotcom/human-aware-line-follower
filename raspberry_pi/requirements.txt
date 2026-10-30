@@ -1,0 +1,5 @@
+# Pi-specific apt packages usually preferred: python3-picamera2, python3-opencv
+# Python package for USB serial communication:
+pyserial>=3.5,<4
+# cv2 and picamera2 must be installed using compatible Raspberry Pi OS packages.
+# OpenCV HOG is a SUBSTITUTE, not the team's original model.
