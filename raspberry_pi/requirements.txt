@@ -1,0 +1,6 @@
+# 참고용. Raspberry Pi OS/아키텍처에 따라 설치 방법이 달라질 수 있습니다.
+pyserial
+opencv-python
+numpy
+netifaces
+tflite-runtime

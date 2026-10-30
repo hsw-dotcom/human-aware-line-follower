@@ -1,96 +1,58 @@
-"""2023년 사용자 설명에 맞춘 Pi 사람 검출 전담 복원본.
-
-실제 2023년 최종 main.py 원문은 아직 확보되지 않았습니다.
-Pi는 주행 중 반복적으로 카메라에서 프레임을 추출해 사람을 검출하고
-사람 수를 '존재 여부 0/1'로만 변환해 Arduino로 전송합니다.
-정지구간 색상·모터·재출발 버튼은 Arduino가 처리합니다.
-
-신호 극성(2026-10-31 사용자 직접 확인):
-    0 = 사람 없음
-    1 = 사람 있음
-2026-10-31 확인: 최신 인식 결과는 0.3초 주기로 갱신합니다.
-11월 24일 '결과가 달라질 때만 송신' 요청을 적용해 최초 1회 및
-0/1 변화 시에만 보냅니다. 촬영·추론이 0.3초보다 오래 걸리면 갱신도 늦어질 수 있습니다.
-이 코드는 정지구간·색상·버튼을 판단하지 않습니다.
-"""
-from pathlib import Path
+"""Raspberry Pi 사람 인식·0/1 전송 복원 예시 (2023년 최종 원본 아님)."""
 import time
-
+from pathlib import Path
 import count_objects
 
-IMAGE_PATH = Path('/home/pi/project/image/before.jpg')  # Safe Watch 검출기 경로와 일치시킨 복원 선택
-SERIAL_PORT = '/dev/ttyACM0'                              # 독립 시리얼 시험에서 확인
-BAUD_RATE = 9600                                          # 사용자 제공 스케치에서 확인
-UPDATE_INTERVAL_SECONDS = 0.3                           # 사용자 직접 확인한 인식값 갱신 주기
+BASE_DIR = Path(__file__).resolve().parent
+IMAGE_PATH = BASE_DIR / "image" / "before.jpg"
+SERIAL_PORT = "/dev/ttyACM0"
+BAUD_RATE = 9600
+DETECTION_INTERVAL = 0.3
 
 
-def get_ip(interface='wlan0'):
-    """2023년 사용자 코드에서 확인된 netifaces/wlan0 IP 조회."""
-    import netifaces as ni
-    info = ni.ifaddresses(interface)
-    return info[ni.AF_INET][0]['addr']
+def get_ip(interface="wlan0"):
+    import netifaces
+    return netifaces.ifaddresses(interface)[netifaces.AF_INET][0]["addr"]
 
 
-def get_frame(ip, image_path=IMAGE_PATH):
-    """기록에 등장한 MJPEG URL에서 프레임 한 장을 before.jpg에 저장."""
+def get_frame(ip):
+    """MJPEG 스트림에서 한 프레임을 저장합니다."""
     import cv2
-
-    url = 'http://' + ip + ':8000/stream.mjpg'
-    capture = cv2.VideoCapture(url)
+    stream = cv2.VideoCapture(f"http://{ip}:8000/stream.mjpg")
     try:
-        ok, frame = capture.read()
+        ok, frame = stream.read()
     finally:
-        capture.release()
+        stream.release()
     if not ok or frame is None:
-        raise RuntimeError('MJPEG stream frame not available: ' + url)
-
-    image_path.parent.mkdir(parents=True, exist_ok=True)
-    if not cv2.imwrite(str(image_path), frame):
-        raise OSError('image save failed: %s' % image_path)
-
-
-def sample_people(ip):
-    """정지구간 진입 여부와 관계없이 프레임을 추출하고 사람 수를 구함."""
-    get_frame(ip)
-    return count_objects.detect()
+        raise RuntimeError("카메라 프레임을 읽지 못했습니다.")
+    IMAGE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if not cv2.imwrite(str(IMAGE_PATH), frame):
+        raise OSError("이미지 저장 실패")
 
 
-def people_to_flag(people_num):
-    """Arduino에는 인원 수가 아니라 0/1 존재 여부만 전송."""
-    return 1 if people_num != 0 else 0
+def people_to_flag(people_count):
+    return 1 if people_count > 0 else 0
 
 
-def send_if_changed(ser, flag, previous_flag):
-    """2023-11-24 변경 시 전송 요구의 복원; 첫 반복은 항상 전송."""
-    if flag != previous_flag:
-        ser.write((str(flag) + '\n').encode('ascii'))
-    return flag
+def send_if_changed(serial_port, current, previous):
+    """최초 1회와 변경 시 송신하는 복원 선택."""
+    if current != previous:
+        serial_port.write(f"{current}\n".encode("ascii"))
+    return current
 
 
-def wait_until(target, clock, sleep):
-    """다음 인식 갱신 시각까지 대기. 이미 지났으면 즉시 진행."""
-    remaining = target - clock()
-    if remaining > 0:
-        sleep(remaining)
-
-
-def run():
-    """약 0.3초 주기로 촬영·인식, 0/1이 변한 경우 Arduino에 전송."""
+def main():
     import serial
-
     ip = get_ip()
-    previous_flag = None
-    next_sample_at = time.monotonic()
-    with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1) as arduino:
+    previous = None
+    with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1) as port:
         while True:
-            wait_until(next_sample_at, time.monotonic, time.sleep)
-            started_at = time.monotonic()
-            people_num = sample_people(ip)
-            flag = people_to_flag(people_num)
-            previous_flag = send_if_changed(arduino, flag, previous_flag)
-            # 300ms는 목표 갱신 간격이며, 추론 시간이 더 길면 실제 주기는 길어짐.
-            next_sample_at = started_at + UPDATE_INTERVAL_SECONDS
+            started = time.monotonic()
+            get_frame(ip)
+            people_count = count_objects.detect()
+            previous = send_if_changed(port, people_to_flag(people_count), previous)
+            time.sleep(max(0, DETECTION_INTERVAL - (time.monotonic() - started)))
 
 
-if __name__ == '__main__':
-    run()
+if __name__ == "__main__":
+    main()
