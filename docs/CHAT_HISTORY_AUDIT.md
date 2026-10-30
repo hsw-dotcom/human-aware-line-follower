@@ -13,7 +13,7 @@
 | 2023-11-21 | Pi에서 `/dev/ttyACM0` USB 시리얼·9600bps 시험, `netifaces`·`matplotlib`·`tflite_runtime` 의존성 설치 및 포트 관련 오류 | 개발 환경 디버깅 | [오류 기록](PI_SERIAL_AND_DEBUG_HISTORY.md) |
 | 2023-11-21 | 별도 `pi.jpg` 파일 경로로 영상 저장 시험. `before.jpg`/Safe Watch 검출기의 이미지 경로와 차이 | 초기 스냅샷 테스트 | 해당 경로들을 최종 경로로 혼합하지 않음 |
 | 2023-11-21~23 | Arduino 모터 PWM 5·6·9·10, IR 7·8, 버튼 D3, speed 255, Serial 9600, TCS34725 50ms/4X; 적색 조건 `r>=5`, 인원수 `>=1` 또는 `2` 시험 | 사용자 제공 개발 스케치·조건 변경 | [기존 보존 스케치](USER_SUPPLIED_ARDUINO_VERSIONS.md)와 연결 |
-| 2023-11-23 | Pi 사용자 코드에서 `get_ip()`(wlan0)·`get_frame(ip)`(MJPEG 프레임)·`count_objects.detect()` 호출. `/home/pi/project/before.jpg` 저장 시도, 이미지 경로 불일치로 OpenCV 오류 | 사용자 코드 및 실제 traceback | 현재 복원에는 `get_ip/get_frame` 형태 반영. 원본 파일 전체는 미확보 |
+| 2023-11-23 | Pi 사용자 코드에서 `get_ip()`(wlan0)·`get_frame(ip)`(MJPEG 프레임)·`count_objects.detect()` 호출. `/home/pi/project/before.jpg` 저장 시도, 이미지 경로 불일치로 OpenCV 오류 | 사용자 코드 및 실제 traceback | 현재 복원에는 `get_ip/get_frame` 형태 반영. **Picamera2는 별도 stream.py 등에서 시험된 카메라 계층**으로 구분; 메인 소스와 혼합하지 않음 |
 | 2023-11-23~24 | 사람 인식은 `get_frame`→`count_object`로 먼저 진행, 이후 Arduino 색상·버튼 통신 판정 | 사용자 코드 부분 확인 | 실행용 복원의 촬영 순서를 우선 근거로 반영 |
 | 2023-11-23~24 | `r:g:b:button` 포맷, 색 조건 `r>=4 or r>=2*g or r>=2*b`, 버튼 입력과 `previous_result`; 과거 문답에는 `색 OR 사람` 조건 기록 | 대화 속 판단식 | 원문 보존, 실제 목적과 충돌을 명시 |
 | **2023-11-24** | Arduino에 RGB/사람 수 전체가 아니라 **`result` 값만** 보낼 것, **`current_result != previous_result`인 경우에만 전송**할 것 요구 | 사용자 명시 요구 | [통신 버전 차이](PI_SERIAL_AND_DEBUG_HISTORY.md). 현 실행용 복원에 무비판 적용하지 않음 |

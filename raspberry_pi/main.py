@@ -123,14 +123,13 @@ def sample_people(ip):
 def run():
     """MJPEG 반복 프레임 추출→인식→Arduino RGB/버튼 수신→판정→회신."""
     import serial
-    
 
     state = LineTracerState()
     ip = get_ip()
     with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1) as arduino:
         while True:
-                # 실제 11/23~24 대화의 Pi 루프에서는 촬영·검출이 먼저 실행됨.
-                # 이 코드는 매회 새 이미지를 처리하며 별도의 사람 검출 캐시를 만들지 않음.
+            # 실제 11/23~24 대화의 Pi 루프에서는 촬영·검출이 먼저 실행됨.
+            # 이 코드는 매회 새 이미지를 처리하며 별도의 사람 검출 캐시를 만들지 않음.
             people_num = sample_people(ip)
             line = arduino.readline()
             if not line:

@@ -35,3 +35,4 @@ raspberry_pi/requirements-reference.txt,Pi folder reference,See README and docs 
 simulation/trace.py,offline verification,See README and docs for provenance
 tests/test_historical_logic.py,offline verification,See README and docs for provenance
 tests/test_person_count.py,offline verification,See README and docs for provenance
+tests/test_stream_capture.py,offline verification,See README and docs for provenance
