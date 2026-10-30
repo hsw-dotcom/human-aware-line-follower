@@ -1,3 +1,6 @@
+# 라인트레이서 코드 복원본 파일 목록
+# 2026-10-31 Safe Watch 사람 인식 기능 재사용 반영
+
 README.md
 arduino/line_tracer/line_tracer.ino
 assets/README.md
@@ -5,6 +8,8 @@ docs/ARCHITECTURE.md
 docs/CHANGELOG.md
 docs/DETAILED_BEHAVIOR.md
 docs/RUNBOOK.md
+docs/SAFEBWATCH_REUSE.md
+docs/SOURCE_MANIFEST.csv
 docs/SOURCE_PROVENANCE.md
 docs/WIRING_AND_ASSUMPTIONS.md
 original_source/README.md
@@ -19,12 +24,12 @@ raspberry_pi/line_tracer/detector_adapter.py
 raspberry_pi/line_tracer/main.py
 raspberry_pi/line_tracer/protocol.py
 raspberry_pi/line_tracer/vision.py
+raspberry_pi/models/README.md
 raspberry_pi/requirements.txt
 simulation/demo.py
 tests/test_coordinator.py
+tests/test_count_objects.py
 tests/test_decision.py
 tests/test_protocol.py
 tests/test_trace.py
 tests/test_vision.py
-docs/FILE_TREE.txt
-docs/SOURCE_MANIFEST.csv

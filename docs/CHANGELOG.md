@@ -11,3 +11,11 @@
 - 과거 설명과 새 가정 및 엔지니어링 보완 사항을 문서에서 분리.
 
 > 변경 전 ZIP과 신규 ZIP의 어느 소스도 실제 2023년 원본으로 검증된 것은 아닙니다.
+
+## 2026-10-31 — Safe Watch 기능 재사용 출처 확정
+
+- 사용자 추가 설명: 라인트레이서의 사람 인식 라이브러리는 Safe Watch에서 필요한 사람 인식 기능만 추출해 재사용한 것.
+- 이전 OpenCV HOG **임의 대체** 코드 제거; Safe Watch `src/python/count_objects.py`에서 확인된 TFLite 사람 수 계산 로직으로 재복원.
+- Safe Watch 사람 클래스 0, 신뢰도 0.2, 640×640, TF1/TF2 출력 분기를 보존.
+- 실제 모델 파일 및 라인트레이서 당시 추출본은 아직 미확보. 학습·정확도 개선을 새 성과로 주장하지 않음.
+- `docs/SAFEBWATCH_REUSE.md`, `raspberry_pi/models/README.md`, `tests/test_count_objects.py` 추가.
