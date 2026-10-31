@@ -1,4 +1,4 @@
-"""Raspberry Pi 사람 인식·0/1 전송 복원 예시 (2023년 최종 원본 아님)."""
+"""Raspberry Pi 사람 검출 및 Arduino용 0/1 신호 전송 — 프로젝트 참고 구현."""
 import time
 from pathlib import Path
 import count_objects
@@ -35,7 +35,7 @@ def people_to_flag(people_count):
 
 
 def send_if_changed(serial_port, current, previous):
-    """최초 1회와 변경 시 송신하는 복원 선택."""
+    """처음 한 번 송신하고, 이후에는 값이 변경될 때 갱신합니다."""
     if current != previous:
         serial_port.write(f"{current}\n".encode("ascii"))
     return current
