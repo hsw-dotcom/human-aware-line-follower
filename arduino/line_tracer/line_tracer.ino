@@ -1,5 +1,5 @@
 /*
- * Arduino 정지구간·모터 제어 복원 예시 (2023년 최종 원본 아님).
+ * 적재 구간 정지·재출발 제어 — 개발 경험 기반 참고 구현.
  * Pi: 0=사람 없음, 1=사람 있음 / Arduino: 정지구간 판별
  * 색상 임계값과 재출발 무시 시간은 개발 실험에 근거한 예시값.
  */
@@ -16,7 +16,7 @@
 
 const int SPEED = 255;
 const int RED_THRESHOLD = 5;      // 라벨·테이프 색상에 맞춰 조정
-const unsigned long IGNORE_MS = 2000;  // 시험 예시값, 최종값 미확인
+const unsigned long IGNORE_MS = 2000;  // 재출발 직후 정지 조건 무시 시간(환경에 맞게 조정)
 
 Adafruit_TCS34725 sensor(
     TCS34725_INTEGRATIONTIME_50MS, TCS34725_GAIN_4X);
